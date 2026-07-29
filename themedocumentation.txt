@@ -1,0 +1,1361 @@
+/* ██████████████████████████████████████████████████████████████████████████
+   CATHEDRAL — COMPLETE THEME DOCUMENTATION
+   Every element in the app. No omissions. Accurate specificity guidance.
+   ██████████████████████████████████████████████████████████████████████████
+
+   ══════════════════════════════════════════════════════════════════════════
+   1. HOW THE THEME SYSTEM WORKS
+   ══════════════════════════════════════════════════════════════════════════
+
+   ui.js scans this file at runtime and auto-populates all theme dropdowns.
+   It finds every  body.theme-*  block containing --theme-label.
+   No JS or HTML changes needed — add your block here and it appears.
+
+   A complete theme has TWO parts:
+
+     PART A — CSS Variables (one body.theme-x { } block)
+       Controls ~75% of the UI. Everything that reads var(--something).
+
+     PART B — Explicit Overrides (separate body.theme-x selector { } rules)
+       Required for elements with hardcoded values that vars cannot reach.
+
+   ⚠ NEVER NEST SELECTORS. This is the #1 cause of silently broken themes.
+   Everything after a nested block is ignored by the browser with no error.
+
+     WRONG:
+       body.theme-x {
+         --bg-body: red;
+         body.theme-x button { background: red; }  ← kills all rules after this
+       }
+
+     CORRECT:
+       body.theme-x { --bg-body: red; }
+       body.theme-x button { background: red; }
+
+   ══════════════════════════════════════════════════════════════════════════
+   2. WHEN TO USE !important IN PART B
+   ══════════════════════════════════════════════════════════════════════════
+
+   Do NOT cargo-cult !important onto everything. Use it only when needed:
+
+   NEEDS !important:
+     - Overriding an existing base rule that already has !important
+       (only 2 cases in this app: input:focus box-shadow, and
+        .mp-btn.mp-active color)
+     - Overriding JS inline styles (element.style.x = ...)
+       e.g. avatar backgrounds set by getUserColor(), severity colors
+            set by taxonomy-panel.js
+     - Overriding the mobile .user-item:active rule (has !important in base)
+
+   DOES NOT NEED !important:
+     - body.theme-X #messages { background: ... }
+       → body.theme-X #messages has specificity (0,1,1,1)
+       → base #messages has specificity (0,0,1,0) — theme wins cleanly
+     - Same for all body.theme-X #id or body.theme-X .class overrides
+       where the base rule does NOT have !important
+     - body.theme-X #tax-header, #topbar-title, .btn-kick, .dm-unread,
+       .msg-audio, .audio-play-btn, #lightbox, #reconnect-banner, etc.
+
+   Quick rule: if the base rule has !important → you need !important.
+   Otherwise body.theme-X prefix alone gives you enough specificity.
+
+   ══════════════════════════════════════════════════════════════════════════
+   3. CSS !important BEATS INLINE STYLES — nothing is truly "unthemeable"
+   ══════════════════════════════════════════════════════════════════════════
+
+   Some elements have colors set by JavaScript (element.style.x = value).
+   Inline styles normally win over CSS. BUT: !important in a CSS rule wins
+   over inline styles. So you can always override them from CSS.
+
+   The real distinction is:
+
+   "Cannot theme PER-ELEMENT dynamically"
+     e.g. user avatar colors come from a JS palette (getUserColor).
+     You can make ALL avatars the same color with CSS !important,
+     but you cannot give each user a different themed color without
+     editing USER_COLORS in ui.js.
+
+   "Cannot override at all from CSS"
+     Almost never true. Even ambient.js presence pills can technically be
+     targeted — e.g. body.theme-x [style*="rgba(0,0,0,0.5)"] — though
+     editing ambient.js directly is far cleaner in that specific case.
+
+   ══════════════════════════════════════════════════════════════════════════
+   4. COMPLETE CSS VARIABLE REFERENCE
+   ══════════════════════════════════════════════════════════════════════════
+
+   ── BACKGROUNDS ──────────────────────────────────────────────────────────
+
+   --bg-body
+     Outermost desktop background. Visible around the app window.
+     Also: global scrollbar track background.
+     Accepts any CSS background value (color, gradient, image, transparent).
+
+   --bg-panel
+     Window chrome / main panel surface.
+     Used by: #chat-screen-inner, #join-card, .mp-inner, #taxonomy-panel,
+              .dm-win, #dm-ctx-menu, #status-picker-panel, .msg-actions popup.
+
+   --bg-sidebar    Left sidebar. Also: #mp-artists (music artist list).
+
+   --bg-header
+     Title bar / header background.
+     Used by: #topbar, #sidebar-header, .dm-titlebar, #status-picker-header.
+     ⚠ #tax-header (glossary) also reads this but needs an explicit Part B
+     override — it does not reliably inherit it.
+
+   --bg-bottom     Bottom input bar. Used by: #bottom-chrome, .dm-inputbar.
+
+   --bg-input
+     Input/textarea and "sunken" surface background.
+     Used by: all inputs and textareas, .dm-input,
+              music progress bar track, music volume slider track,
+              DM window scrollbar track,
+              toggled/active state of music buttons (.mp-btn.mp-active),
+              toggled sidebar buttons when in active/on state.
+
+   --bg-btn        Button resting state. Also: global scrollbar thumb.
+   --bg-btn-hover  Button hover. Also: global scrollbar thumb hover.
+   --bg-msg        Received message bubble. Used by: .msg-text, .dm-msg-text.
+   --bg-msg-own    Your own sent message. Used by: .msg.own .msg-text,
+                   .dm-msg.dm-own .dm-msg-text.
+
+   ── TEXT ─────────────────────────────────────────────────────────────────
+
+   --text-main   Primary text everywhere. Also: music progress bar handle color.
+   --text-dim    Secondary/muted text. Timestamps, hints, placeholders,
+                 sidebar labels, glossary descriptions.
+   --text-btn    Text inside buttons. Also: .mp-btn color.
+
+   ── BORDERS ──────────────────────────────────────────────────────────────
+
+   --border-main
+     Standard border used on almost every element.
+     ⚠ Setting to "none" makes ALL border: var(--border-main) disappear —
+     panels, inputs, buttons, messages, cards, music player, DM windows.
+     When using none (Win95/3D style), add explicit box-shadow borders
+     in Part B wherever you need visible edges.
+
+   --border-light  Subtle separator. Music tracklist back button, minor dividers.
+
+   --border2
+     Used by: taxonomy card hover border-color, glossary scrollbar thumb.
+     ⚠ Fallback is #333 (dark). On light themes this creates a visible dark
+     border on card hover. Always set this explicitly for light themes.
+     Example: #808080 (mid-gray) | rgba(0,0,0,0.2) (soft) | #c0c0c0 (light)
+
+   ── SHADOWS ──────────────────────────────────────────────────────────────
+
+   --shadow-panel
+     Major panel shadow. All panels, DM windows, music player, status modal,
+     global scrollbar thumb.
+     Raised 3D: inset 1px 1px 0 #fff, inset 2px 2px 0 #dfdfdf,
+                inset -1px -1px 0 #000, inset -2px -2px 0 #808080
+     Soft drop: inset 0 1px 0 rgba(255,255,255,.15), 0 12px 32px rgba(0,0,0,.8)
+     Can be: none
+
+   --shadow-btn    Button shadow. All buttons, music buttons, scrollbar thumb.
+   --shadow-msg    Message bubble shadow. .msg-text, .dm-msg-text, album cover.
+
+   --shadow-input
+     Input/sunken shadow. All inputs, DM input, music sliders.
+     ⚠ COMBINED with --shadow-focus on focus via the base rule:
+       input:focus { box-shadow: var(--shadow-input), var(--shadow-focus) !important; }
+     Your --shadow-input var IS read. But to control the full focus appearance
+     use the explicit input:focus override in Part B.
+
+   --shadow-focus
+     Focus ring, appended after --shadow-input (not replacing it).
+     The var is read correctly via the combined base rule above.
+     For full control use the Part B input:focus override.
+     Example: 0 0 0 2px rgba(255,153,51,.4) | 0 0 0 1px #000 | none
+
+   ── SHAPE ────────────────────────────────────────────────────────────────
+
+   --radius-panel   Panels, windows, music player, DM windows, status modal.
+   --radius-btn     Buttons, scrollbar thumbs, user avatars, album cells,
+                    glossary list items.
+   --radius-input   Text inputs, textareas, DM paste thumbnail.
+   --radius-msg     Message bubbles, album cover, audio bubble, image attachments.
+
+   All four accept any CSS border-radius value. Set all to 0px for square.
+   The "sharp" toggle (body.no-radius) overrides all to 0px.
+
+   ── TYPOGRAPHY ───────────────────────────────────────────────────────────
+
+   --font-main   Global body font. Also used in listen-together labels.
+
+   ── ACCENT / LED COLOR ───────────────────────────────────────────────────
+
+   --led-glow
+     Single accent color for music player and online dot. Controls:
+       Artist name (.mp-artist), progress bar fill (.mp-fill),
+       active button text (.mp-btn.mp-active), section labels (.mp-grid-label),
+       active album border + label (.mp-alb-cell.mp-alb-active),
+       tracklist album title (.mp-tl-album),
+       active track color + text-shadow glow (.mp-tl-row.mp-tl-active),
+       active artist color + text-shadow glow (.mp-ap-item.mp-ap-active),
+       online dot (#online-badge::before background),
+       listen-together SVG line color (read via JS getPropertyValue).
+     ⚠ Setting --led-glow: transparent does NOT kill glow blur.
+       text-shadow: 0 0 4px transparent still renders a halo.
+       Use a solid color AND add the text-shadow Part B override.
+
+   ── RAIN ─────────────────────────────────────────────────────────────────
+
+   --rain-r  --rain-g  --rain-b
+     Integer RGB components for the rain animation canvas.
+     Example: 174, 212, 248 (blue) | 0, 128, 128 (teal) | 232, 218, 203 (bronze)
+
+   ── LISTEN-TOGETHER EXTRAS ───────────────────────────────────────────────
+
+   --color-bubble-bg   [optional — fallback: #1c1c1c hardcoded in JS]
+     Background of the #lt-toast notification.
+     Without this, toast is always near-black regardless of theme.
+     Recommended: set to var(--bg-panel).
+
+   --color-text        [optional — fallback: #ddd hardcoded in JS]
+     Text color of #lt-toast. Without this, always light gray.
+     Recommended: set to var(--text-main).
+
+   ── TAXONOMY PILL COLORS ─────────────────────────────────────────────────
+
+   Glossary pill appearance and card left accent bars.
+   JS fallbacks if not set: Fallacy #9e7060 | Bias #6888a8 | Assumption #8e8050
+
+   --fallacy-bg    --fallacy-txt    --fallacy-bdr
+   --bias-bg       --bias-txt       --bias-bdr
+   --assumption-bg --assumption-txt --assumption-bdr
+
+   ══════════════════════════════════════════════════════════════════════════
+   5. COMPLETE HARDCODED VALUE INVENTORY
+   ══════════════════════════════════════════════════════════════════════════
+
+   Every hardcoded non-var color/shadow in style.css.
+   "needs !" = the base rule already has !important, your override needs it too.
+   "inline" = set by JS inline style, needs !important to override from CSS.
+   No marker = body.theme-X prefix gives enough specificity, no !important needed.
+
+   SELECTOR                           PROPERTY       VALUE / NOTE
+   ──────────────────────────────────────────────────────────────────────────
+   .tb-theme-hotkey                   background     rgba(128,128,128,.18)
+   .tb-dd-item:hover                  background     rgba(128,128,128,.15)
+   .msg-reply-dot                     color          #fff              [inline for bg — see note]
+   .msg-reply-dot                     text-shadow    rgba(0,0,0,.4)
+   .msg-reply-connector::after        border         rgba(128,128,128,.28)  reply curve line
+   .msg-action-btn:hover              background     rgba(128,128,128,.18)
+   #join-error                        color          #ff5555
+   #online-badge::before              border         rgba(0,0,0,.5)
+   #online-badge::before              box-shadow     0 0 6px var(--led-glow)  [glow needs text-shadow off]
+   .user-avatar                       color          #fff
+   .user-avatar                       box-shadow     rgba(255,255,255,.4) + rgba(0,0,0,.5)
+   .user-avatar                       border         rgba(0,0,0,.3)
+   .user-avatar                       text-shadow    rgba(0,0,0,.5)
+   .user-avatar background            [inline]       getUserColor()    needs ! to flatten
+   .msg-avatar                        color          #fff
+   .msg-avatar                        box-shadow     rgba(255,255,255,.4) + rgba(0,0,0,.5)
+   .msg-avatar                        border         rgba(0,0,0,.3)
+   .msg-avatar                        text-shadow    rgba(0,0,0,.5)
+   .msg-avatar background             [inline]       getUserColor()    needs ! to flatten
+   .seen-dot                          color          #fff
+   .seen-dot                          box-shadow     rgba(255,255,255,.4) + rgba(0,0,0,.5)
+   #my-status-row:hover               background     rgba(128,128,128,.1)
+   #status-picker-backdrop            background     rgba(0,0,0,.5)
+   .status-preset.active              border-color   rgba(128,128,128,.5)
+   #status-clear-btn:hover            color          #ff5555
+   #status-clear-btn:hover            border-color   #ff5555
+   .user-name.me                      color          [needs !] base rule has !important
+   #reconnect-banner                  background     #8a0000
+   #reconnect-banner                  color          #fff
+   .msg-text .mention                 background     rgba(128,128,128,.3)
+   .msg-chat-error                    color          #ff5555
+   #char-counter.warn                 color          #ffaa00
+   #char-counter.limit                color          #ff5555
+   #mic-btn.mic-recording             color          #ff4c4c
+   #rec-dot                           background     #ff4c4c
+   .msg-audio                         background     rgba(0,0,0,.30)
+   .own .msg-audio                    background     rgba(0,0,0,.22)
+   .audio-play-btn                    background     rgba(255,255,255,.18)
+   .audio-play-btn                    border         rgba(255,255,255,.26)
+   .audio-play-btn                    color          #fff
+   .audio-play-btn:hover              background     rgba(255,255,255,.28)
+   .audio-dur                         color          rgba(255,255,255,.52)
+   #paste-cancel:hover                background     #ff5555
+   #paste-cancel:hover                color          #fff
+   #lightbox                          background     rgba(0,0,0,.88)
+   #lightbox img                      border         rgba(255,255,255,.15)
+   #lightbox img                      box-shadow     rgba(0,0,0,.9)
+   #lightbox-close                    background     rgba(0,0,0,.55)
+   #lightbox-close                    border         rgba(255,255,255,.22)
+   #lightbox-close                    color          #fff
+   #lightbox-close:active             background     rgba(255,255,255,.25)
+   #admin-status.ok                   color          #22c55e
+   #admin-status.err                  color          #ff5555
+   .btn-kick                          background     #ff5555
+   .btn-kick                          border-color   #cc3333
+   .btn-kick:hover                    background     #cc3333
+   .btn-mute                          background     #ffaa00
+   .btn-mute                          border-color   #cc8800
+   .btn-mute:hover                    background     #cc8800 / color #fff
+   .btn-unmute                        background     #22c55e
+   .btn-unmute                        border-color   #16a34a
+   .btn-unmute:hover                  background     #16a34a
+   .user-item.expanded                background     rgba(128,128,128,.08)
+   .user-kick-notice                  color          #ffaa00
+   .msg-muted-notice                  color          #ffaa00
+   .admin-self-label                  color          #ffaa00
+   .muted-badge                       color          #ffaa00
+   .muted-badge                       border         #ffaa00
+   #admin-badge                       color          #ffaa00
+   #admin-badge                       border         #ffaa00
+   .kick-btn                          border         #ff5555
+   .kick-btn                          color          #ff5555
+   .kick-btn:hover                    background     #ff5555
+   .kick-btn:hover                    color          #fff
+   #kicked-screen h2                  color          #ff5555
+   .user-admin-crown                  color          #ffaa00
+   .ctx-item:hover                    background     rgba(128,128,128,.15)
+   .dm-win.dm-active                  box-shadow     rgba(255,255,255,.15) + rgba(0,0,0,.9)
+   .dm-tb-avatar                      color          #fff
+   .dm-tb-avatar                      box-shadow     rgba(255,255,255,.3) + rgba(0,0,0,.5)
+   .dm-tb-avatar                      border         rgba(0,0,0,.3)
+   .dm-tb-avatar background           [inline]       getUserColor()    needs ! to flatten
+   .dm-unread                         background     #ff5555
+   .dm-unread                         color          #fff
+   .dm-wb.dm-close-btn:hover          background     #ff5555
+   .dm-paste-x:hover                  background     #ff5555
+   .dm-paste-x:hover                  color          #fff
+   #sidebar-backdrop                  background     rgba(0,0,0,.55)
+   .taxonomy-card:hover               box-shadow     rgba(0,0,0,.18)
+   .tax-item:hover                    background     rgba(128,128,128,.1)
+   .tax-item.tax-active               background     rgba(128,128,128,.08)
+   .tax-detail-header--back:hover     background     rgba(128,128,128,.08)
+
+   MOBILE ONLY (@media max-width 640px):
+   body.sidebar-open #sidebar         box-shadow     rgba(0,0,0,.7)
+   #mobile-action-sheet-backdrop      background     rgba(0,0,0,.45)
+   #mobile-action-sheet-panel         box-shadow     rgba(0,0,0,.5)
+   .mobile-action-btn:active          background     rgba(128,128,128,.15)
+   .user-item:active                  background     rgba(128,128,128,.18) [needs !]
+   #bottom-chrome                     box-shadow     rgba(255,255,255,.05)
+   #dm-tray-btn.has-unread            background     #ff5555
+   #dm-tray-btn.has-unread            border-color   #cc3333
+   .dm-bubble                         color          #fff
+   .dm-bubble                         box-shadow     rgba(0,0,0,.55) + rgba(0,0,0,.4)
+   .dm-bubble                         border         rgba(255,255,255,.18)
+   .dm-bubble-badge                   background     #ff3b30
+   .dm-bubble-badge                   color          #fff
+   .dm-back-btn:active                background     rgba(128,128,128,.18)
+
+   HARDCODED IN JS — overridable with !important:
+   taxonomy-panel.js severity High    color          #d47070    [inline — needs !]
+   taxonomy-panel.js severity Medium  color          #a99fff    [inline — needs !]
+   taxonomy-panel.js severity Low     color          #5ecfba    [inline — needs !]
+   taxonomy-panel.js severity Universal color        #d4a840    [inline — needs !]
+   Note: !important on .tax-meta-value sets ALL severities to one color.
+   To theme them differently, edit severityColor in taxonomy-panel.js.
+
+   main.js / dm.js / audio-recorder.js
+   .user-avatar background            getUserColor() [inline — needs ! to flatten all]
+   .msg-avatar background             getUserColor() [inline — needs ! to flatten all]
+   .dm-tb-avatar background           getUserColor() [inline — needs ! to flatten all]
+   .msg-user color                    getUserColor() [inline — needs ! to flatten all]
+   To keep per-user colors but change the palette, edit USER_COLORS in ui.js.
+
+   HARDCODED IN JS — editable via ambient.js directly:
+   Cursor presence pill background    rgba(0,0,0,0.5)   hardcoded cssText in ambient.js
+   Cursor presence pill text-shadow   rgba(0,0,0,0.9)   hardcoded cssText in ambient.js
+   Lightning overlay color            #ddeeff            hardcoded cssText in ambient.js
+
+   #lt-toast (injected by listentogether.js):
+   box-shadow: 0 4px 18px rgba(0,0,0,.5) — hardcoded.
+   Override: body.theme-X #lt-toast { box-shadow: YOUR_SHADOW; }
+
+   ══════════════════════════════════════════════════════════════════════════
+   6. PART B — EXPLICIT OVERRIDES
+   ══════════════════════════════════════════════════════════════════════════
+
+   !important is marked only where genuinely required (see Section 2).
+   Everything else: body.theme-X prefix alone has sufficient specificity.
+
+   ─── ALWAYS REQUIRED (every theme) ──────────────────────────────────────
+
+   /* 1. Glossary title bar — does not reliably inherit --bg-header */
+   body.theme-X #tax-header {
+     background: YOUR_HEADER_COLOR;
+     border-bottom: var(--border-main);
+     box-shadow: none;
+   }
+   body.theme-X #tax-title-text,
+   body.theme-X #tax-count,
+   body.theme-X #tax-close-btn {
+     color: YOUR_HEADER_TEXT;
+     text-shadow: none;
+   }
+
+   /* 2. Main chat message area — has its own background */
+   body.theme-X #messages {
+     background: YOUR_MESSAGE_AREA;
+   }
+
+   /* 3. Input focus ring — base rule has !important, so needs it here */
+   body.theme-X input:focus,
+   body.theme-X textarea:focus {
+     box-shadow: YOUR_COMPLETE_FOCUS_SHADOW !important;
+   }
+
+   /* 4. Music player glow text-shadows
+      Setting --led-glow changes color but blur halo still renders.
+      Remove these lines if you WANT the glow effect. */
+   body.theme-X .mp-tl-row.mp-tl-active .mp-tl-num,
+   body.theme-X .mp-tl-row.mp-tl-active .mp-tl-name,
+   body.theme-X .mp-ap-item.mp-ap-active {
+     text-shadow: none !important; /* needs ! — base rule has !important */
+   }
+
+   ─── CONDITIONAL (add as needed for your theme) ──────────────────────────
+
+   /* 5. ::selection — text highlight color */
+   body.theme-X ::selection {
+     background: YOUR_SELECTION_BG;
+     color: YOUR_SELECTION_TEXT;
+   }
+
+   /* 6. Topbar title/count — when topbar is dark but --text-main is also dark */
+   body.theme-X #topbar-title { color: YOUR_TOPBAR_TEXT; text-shadow: none; }
+   body.theme-X #topbar-count { color: YOUR_TOPBAR_DIM; }
+
+   /* 7. Sidebar header text */
+   body.theme-X #sidebar-header h1,
+   body.theme-X #sidebar-header * { color: YOUR_HEADER_TEXT; text-shadow: none; }
+
+   /* 8. Online dot */
+   body.theme-X #online-badge::before {
+     background: YOUR_DOT_COLOR;
+     box-shadow: none; /* or: 0 0 6px YOUR_DOT_COLOR for glow */
+     border-color: transparent;
+     border-radius: 50%; /* or 0 for square */
+   }
+
+   /* 9. Listen-together toast
+      Set --color-bubble-bg and --color-text in Part A, OR override here */
+   body.theme-X #lt-toast {
+     background: var(--bg-panel);
+     color: var(--text-main);
+     box-shadow: YOUR_TOAST_SHADOW; /* hardcoded 0 4px 18px rgba(0,0,0,.5) */
+   }
+
+   /* 10. Admin action buttons — hardcoded semantic colors */
+   body.theme-X .btn-kick         { background: ; color: ; border-color: ; }
+   body.theme-X .btn-kick:hover   { background: ; }
+   body.theme-X .btn-mute         { background: ; color: ; border-color: ; }
+   body.theme-X .btn-mute:hover   { background: ; color: ; }
+   body.theme-X .btn-unmute       { background: ; color: ; border-color: ; }
+   body.theme-X .btn-unmute:hover { background: ; }
+
+   /* 11. Semantic status/error/warning colors */
+   body.theme-X #admin-status.ok   { color: YOUR_SUCCESS; }
+   body.theme-X #admin-status.err  { color: YOUR_ERROR; }
+   body.theme-X #join-error        { color: YOUR_ERROR; }
+   body.theme-X .msg-chat-error    { color: YOUR_ERROR; }
+   body.theme-X #char-counter.warn  { color: YOUR_WARNING; }
+   body.theme-X #char-counter.limit { color: YOUR_ERROR; }
+   body.theme-X .muted-badge,
+   body.theme-X .admin-self-label,
+   body.theme-X #admin-badge,
+   body.theme-X .user-admin-crown  { color: YOUR_ACCENT; border-color: YOUR_ACCENT; }
+   body.theme-X #kicked-screen h2  { color: YOUR_ERROR; }
+
+   /* 12. DM window specifics */
+   body.theme-X .dm-win.dm-active {
+     box-shadow: YOUR_ACTIVE_DM_SHADOW;
+   }
+   body.theme-X .dm-tb-avatar {
+     color: #fff;
+     box-shadow: none;
+     border-color: transparent;
+   }
+   body.theme-X .dm-unread,
+   body.theme-X .dm-bubble-badge,
+   body.theme-X #dm-tray-btn.has-unread {
+     background: YOUR_UNREAD_COLOR;
+     color: #fff;
+   }
+   body.theme-X .dm-wb.dm-close-btn:hover,
+   body.theme-X .dm-paste-x:hover { background: YOUR_DANGER; color: #fff; }
+
+   /* 13. Audio message bubble (dark overlay — bad on light themes) */
+   body.theme-X .msg-audio     { background: rgba(0,0,0,0.08); }
+   body.theme-X .own .msg-audio { background: rgba(0,0,0,0.05); }
+   body.theme-X .audio-play-btn {
+     background: rgba(0,0,0,0.15);
+     color: var(--text-main);
+     border-color: rgba(0,0,0,0.2);
+   }
+   body.theme-X .audio-dur { color: var(--text-dim); }
+
+   /* 14. Lightbox */
+   body.theme-X #lightbox { background: rgba(0,0,0,0.88); }
+   body.theme-X #lightbox img { border-color: rgba(255,255,255,0.15); }
+   body.theme-X #lightbox-close { background: rgba(0,0,0,0.55); color: #fff; }
+
+   /* 15. Reconnect banner */
+   body.theme-X #reconnect-banner { background: YOUR_ERROR_BG; color: #fff; }
+
+   /* 16. Avatar appearance — flattens all to one color.
+      Background is set by JS inline style, needs !important.
+      To keep per-user colors, edit USER_COLORS in ui.js instead. */
+   body.theme-X .user-avatar,
+   body.theme-X .msg-avatar {
+     background: YOUR_AVATAR_BG !important; /* needs ! — inline style */
+     box-shadow: none;
+     border-color: transparent;
+     text-shadow: none;
+   }
+
+   /* 17. Reply connector line color */
+   body.theme-X .msg-reply-connector::after {
+     border-color: rgba(128,128,128,0.3);
+   }
+
+   /* 18. Glossary severity colors — flattens all to one color.
+      Set via JS inline style, needs !important.
+      To theme differently per severity, edit severityColor in taxonomy-panel.js. */
+   body.theme-X .tax-meta-value { color: var(--text-main) !important; }
+
+   /* 19. Custom scrollbars */
+   body.theme-X ::-webkit-scrollbar { width: 16px; background: ; }
+   body.theme-X ::-webkit-scrollbar-track { background: ; box-shadow: ; }
+   body.theme-X ::-webkit-scrollbar-thumb {
+     background: ; border: none; border-radius: 0; box-shadow: ;
+   }
+   body.theme-X ::-webkit-scrollbar-thumb:hover  { background: ; }
+   body.theme-X ::-webkit-scrollbar-thumb:active { background: ; box-shadow: none; }
+
+   /* 20. Kill all transitions — for instant/vintage themes */
+   body.theme-X *,
+   body.theme-X button,
+   body.theme-X input,
+   body.theme-X .msg { transition: none !important; }
+   /* Note: !important needed here only because the global rule at the top of
+      themes.css sets transitions on button/input/.msg without specificity. */
+
+   /* 21. Kill all text glows — for flat/non-glowing themes */
+   body.theme-X * { text-shadow: none !important; }
+   /* Note: !important needed because some existing theme overrides
+      (e.g. amoled-skeuo) set text-shadow with !important. */
+
+   ══════════════════════════════════════════════════════════════════════════
+   7. SHARP / ROUND TOGGLE
+   ══════════════════════════════════════════════════════════════════════════
+
+   "Sharp" adds body.no-radius. This rule fires:
+     body.no-radius, body.no-radius *, body.no-radius *::before,
+     body.no-radius *::after {
+       --radius-*: 0px !important; border-radius: 0px !important; }
+
+   Zeros ALL border-radius everywhere including pseudo-elements.
+   If your theme hardcodes any border-radius values, they are zeroed too.
+   Set all --radius-* to 0px in Part A if you want always-square.
+
+   ══════════════════════════════════════════════════════════════════════════
+   8. COMPLETE TEMPLATE — copy this, fill in, paste at bottom of file
+   ══════════════════════════════════════════════════════════════════════════
+
+/* THEME: YOUR NAME HERE */
+body.theme-YOURNAME {
+  --theme-label: 'shown in dropdown'; /* required */
+
+  --bg-body:      ;
+  --bg-panel:     ;
+  --bg-sidebar:   ;
+  --bg-header:    ;
+  --bg-bottom:    ;
+  --bg-input:     ;
+  --bg-btn:       ;
+  --bg-btn-hover: ;
+  --bg-msg:       ;
+  --bg-msg-own:   ;
+
+  --text-main: ;
+  --text-dim:  ;
+  --text-btn:  ;
+
+  --border-main:  ;
+  --border-light: ;
+  --border2:      ; /* set explicitly — fallback #333 is dark, bad on light themes */
+
+  --shadow-panel:  ;
+  --shadow-btn:    ;
+  --shadow-input:  ;
+  --shadow-msg:    ;
+  --shadow-focus:  ;
+
+  --radius-panel: ;
+  --radius-btn:   ;
+  --radius-input: ;
+  --radius-msg:   ;
+
+  --font-main: ;
+  --led-glow:  ;
+
+  --rain-r: ; --rain-g: ; --rain-b: ;
+
+  /* Set these to avoid hardcoded fallbacks in listen-together toast */
+  --color-bubble-bg: var(--bg-panel);
+  --color-text: var(--text-main);
+
+  --fallacy-bg: ; --fallacy-txt: ; --fallacy-bdr: ;
+  --bias-bg:    ; --bias-txt:    ; --bias-bdr:    ;
+  --assumption-bg: ; --assumption-txt: ; --assumption-bdr: ;
+}
+
+/* ── Always required ── */
+body.theme-YOURNAME #tax-header {
+  background: ;
+  border-bottom: var(--border-main);
+  box-shadow: none;
+}
+body.theme-YOURNAME #tax-title-text,
+body.theme-YOURNAME #tax-count,
+body.theme-YOURNAME #tax-close-btn { color: ; text-shadow: none; }
+
+body.theme-YOURNAME #messages { background: ; }
+
+body.theme-YOURNAME input:focus,
+body.theme-YOURNAME textarea:focus { box-shadow: !important; }
+
+/* Remove if you want the glow */
+body.theme-YOURNAME .mp-tl-row.mp-tl-active .mp-tl-num,
+body.theme-YOURNAME .mp-tl-row.mp-tl-active .mp-tl-name,
+body.theme-YOURNAME .mp-ap-item.mp-ap-active { text-shadow: none !important; }
+
+/* ── Add from Section 6 as needed ── */
+
+   ══════════════════════════════════════════════════════════════════════════
+   9. COMMON MISTAKES
+   ══════════════════════════════════════════════════════════════════════════
+
+   ✗  Nested selectors — silently breaks all rules after the nested block
+   ✗  Missing --theme-label — theme won't appear in dropdown at all
+   ✗  --led-glow: transparent — glow blur still renders, use a solid color
+      AND add the text-shadow !important Part B override
+   ✗  --border-main: none without adding box-shadow borders — all edges vanish
+   ✗  Not setting --border2 on a light theme — card hover gets a dark #333 border
+   ✗  Not setting --color-bubble-bg / --color-text — lt toast always near-black
+   ✗  Forgetting #messages and #tax-header overrides — most visibly broken elements
+   ✗  Putting !important everywhere — only needed for base !important rules and
+      inline styles (see Section 2 for the exact list)
+   ✗  Assuming "not overridable" — CSS !important beats inline styles (Section 3)
+
+   ══════════════════════════════════════════════════════════════════════════
+   10. MAKING EXCEPTIONAL THEMES — RESOURCES & TECHNIQUES
+   ══════════════════════════════════════════════════════════════════════════
+
+   Everything below is free, works directly in CSS, and can be used right
+   inside this file. No build tools, no dependencies beyond a URL or a
+   copy-paste. A well-resourced AI can combine these to produce themes that
+   look nothing like default CSS.
+
+   ── TEXTURES ─────────────────────────────────────────────────────────────
+
+   Tileable PNG textures via direct URL (no CORS issues in CSS):
+
+   transparenttextures.com
+     500+ tileable textures. Direct URL pattern:
+     https://www.transparenttextures.com/patterns/NAME.png
+     Notable: dark-wood, brushed-alum, carbon-fibre, concrete-wall,
+              leather, old-wall, rocky-wall, black-felt, corrugated-iron,
+              45-degree-fabric, asfalt, dust, crumpled-paper, noise-lines
+     Usage: --bg-panel: url('https://www.transparenttextures.com/patterns/carbon-fibre.png'), #1a1a1a;
+
+   heropatterns.com
+     SVG geometric patterns as inline data URIs — zero external dependency.
+     Copy the SVG data URI directly from the site.
+     Great for: --bg-body, --bg-sidebar
+     Usage: --bg-body: url("data:image/svg+xml,..."), #1a1a1a;
+
+   patternpad.com
+     Customizable geometric patterns, export as SVG data URI or PNG URL.
+
+   thepatternlibrary.com / patternico.com
+     More tileable pattern packs, free download/link.
+
+   svgbackgrounds.com
+     High quality SVG backgrounds, exportable as data URIs.
+     Great for full --bg-body scenes (circuits, waves, topology lines, etc.)
+
+   css.glass (glassmorphism generator)
+     Generates backdrop-filter blur panels for glass themes.
+     Copy the CSS directly and paste into Part B overrides.
+
+   ── NOISE & GRAIN OVERLAYS ───────────────────────────────────────────────
+
+   The existing amoled-skeuo theme shows the technique — an SVG feTurbulence
+   filter inlined as a data URI layered over a gradient:
+     --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
+              width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence
+              type='fractalNoise' baseFrequency='0.8' numOctaves='3'
+              stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate'
+              values='0'/%3E%3C/filter%3E%3Crect width='256' height='256'
+              filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+     --bg-panel: var(--noise), linear-gradient(180deg, #181818, #0a0a0a);
+
+   Vary baseFrequency (0.6–1.2) for finer/coarser grain.
+   Vary opacity (0.03–0.15) for subtle/heavy grain.
+   Remove %3CfeColorMatrix...%3E to get colored noise instead of grayscale.
+
+   ── FONTS ────────────────────────────────────────────────────────────────
+
+   Google Fonts — fonts.google.com
+     Free, fast CDN. Add an @import BEFORE your theme block:
+     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+     Then: --font-main: 'Inter', sans-serif;
+
+   Notable font pairings for specific moods:
+     Terminal/hacker:   'JetBrains Mono', 'Fira Code', 'Source Code Pro'
+     Elegant/serif:     'Playfair Display', 'Lora', 'Cormorant Garamond'
+     Retro/vintage:     'VT323', 'Press Start 2P', 'Special Elite', 'Courier Prime'
+     Clean/modern:      'Inter', 'DM Sans', 'Outfit', 'Nunito'
+     Brutalist/heavy:   'Space Grotesk', 'Barlow Condensed', 'Bebas Neue'
+     Soft/rounded:      'Nunito', 'Poppins', 'Quicksand'
+
+   Font CDN alternatives (same free fonts, different CDN):
+     bunny.net/fonts — privacy-friendly Google Fonts mirror
+     fonts.cdnfonts.com — large collection including commercial-style fonts
+
+   System font stacks (zero loading time, always available):
+     Windows: 'Segoe UI', system-ui, sans-serif
+     Mac:     -apple-system, 'SF Pro Display', sans-serif
+     Win95:   'MS Sans Serif', 'Microsoft Sans Serif', 'Tahoma', sans-serif
+     Terminal: 'Consolas', 'Courier New', monospace
+
+   ── GRADIENTS ────────────────────────────────────────────────────────────
+
+   uigradients.com — curated named gradients, copy CSS directly
+   cssgradient.io — visual editor, exports linear/radial/conic gradients
+   gradienta.io — mesh gradients, more complex multi-point CSS
+   grabient.com — simple linear gradient collection
+   meshgradient.io — generates mesh gradient images (use as background-image URL)
+   hypercolor.dev — Tailwind-inspired gradient collection, copy CSS
+
+   Technique — layering multiple gradients:
+     --bg-body: radial-gradient(ellipse at top right, #ff6b6b 0%, transparent 60%),
+                radial-gradient(ellipse at bottom left, #4ecdc4 0%, transparent 60%),
+                #1a1a2e;
+
+   Technique — animated gradient (use sparingly):
+     /* In Part B: */
+     @keyframes theme-X-shift { 0%,100% { background-position: 0% 50%; }
+                                 50%     { background-position: 100% 50%; } }
+     body.theme-X { background-size: 400% 400%; animation: theme-X-shift 12s ease infinite; }
+
+   ── COLOR PALETTES ───────────────────────────────────────────────────────
+
+   coolors.co — generate/browse harmonious palettes, export as CSS vars
+   colorhunt.co — curated palette collections
+   khroma.co — AI-generated palettes
+   palettte.app — fine-tune palette relationships
+   realcolors.design — UI-specific color palettes
+   colormind.io — ML-generated palettes from images
+   lospec.com/palette-list — pixel art / retro palettes (perfect for Win95, etc.)
+
+   Technique — building a theme from one hero color:
+     Pick one base color → generate tints/shades at coolors.co →
+     Use the darkest as --bg-body, mid-dark as --bg-panel,
+     mid as --bg-btn, light as --text-dim, lightest as --text-main.
+
+   ── 3D BORDERS / SKEUOMORPHIC SHADOWS ────────────────────────────────────
+
+   neumorphism.io
+     Generates soft-UI (neumorphic) box-shadow values.
+     Copy the raised/pressed/flat values directly into --shadow-panel, --shadow-btn.
+
+   boxshadows.co / box-shadow.dev
+     Shadow collection. Good for soft drop shadows on panels.
+
+   The Win95/98 raised bevel pattern (works for any hard-edged 3D theme):
+     Raised: inset 1px 1px 0 #fff, inset 2px 2px 0 #dfdfdf,
+             inset -1px -1px 0 #000, inset -2px -2px 0 #808080
+     Sunken: inset 1px 1px 0 #000, inset 2px 2px 0 #808080,
+             inset -1px -1px 0 #fff, inset -2px -2px 0 #dfdfdf
+     Use for: --shadow-panel, --shadow-btn, --shadow-input (sunken)
+
+   ── GLASSMORPHISM ────────────────────────────────────────────────────────
+
+   css.glass — generates complete glassmorphism panel CSS
+   ui.glass/generator — similar
+
+   Technique in this app:
+     --bg-panel: rgba(255,255,255,0.15);
+     --shadow-panel: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);
+     --border-main: 1px solid rgba(255,255,255,0.25);
+     Then in Part B:
+     body.theme-X #chat-screen-inner,
+     body.theme-X #sidebar,
+     body.theme-X #taxonomy-panel {
+       backdrop-filter: blur(20px) saturate(120%);
+       -webkit-backdrop-filter: blur(20px) saturate(120%);
+     }
+
+   ── INSPIRATIONAL THEME DIRECTIONS ──────────────────────────────────────
+
+   These are fully achievable in this system using the above resources:
+
+   Terminal / Hacker
+     bg: #000 or near-black | font: JetBrains Mono | led-glow: #00ff41 (matrix green)
+     noise grain overlay | all borders: 1px solid #1a1a1a | msgs: transparent
+
+   Vaporwave / Synthwave
+     bg: radial purple-to-pink gradient | font: 'VT323' or 'Orbitron'
+     led-glow: #ff00ff | msgs: semi-transparent purple | shadow-panel: neon glow
+
+   Retro Paper / Aged Document
+     bg: #d4c5a9 linen texture | font: 'Courier Prime' or 'Special Elite'
+     bg-panel: #f5efe0 + paper texture | borders: 1px solid #8b7355
+     led-glow: #8b4513 (brown) | msgs: #faf6f0
+
+   Cyberpunk
+     bg: #0d0015 + noise | font: 'Barlow Condensed'
+     led-glow: #ffff00 or #00ffff | bg-header: linear-gradient(90deg, #ff00ff, #00ffff)
+     shadow-panel: 0 0 20px rgba(255,0,255,0.3)
+
+   Glassmorphism (see above technique)
+     bg-body: vivid radial gradient | all panels: rgba white + backdrop-filter blur
+
+   Y2K / Bubblegum
+     bg: hot pink radial gradient | font: 'Nunito' or 'Quicksand'
+     radius-*: 20px+ (very round) | led-glow: #00ffcc | msgs: white + pink-own
+
+   Typewriter / Vintage
+     bg: #2c1810 dark leather texture | font: 'Special Elite'
+     bg-panel: #1a0f08 + leather texture | led-glow: #d4960a (amber)
+     borders: 1px solid #3d2b1f
+
+   Windows 95 / 98 (see existing win95 theme as reference)
+     All corners: 0px | borders: none | shadows: 4-color inset bevel
+     bg-body: #008080 | bg-panel: #c0c0c0 | font: 'MS Sans Serif'
+
+   ── LAYERING TECHNIQUE — THE FULL PATTERN ────────────────────────────────
+
+   CSS background accepts multiple layers separated by commas.
+   Order: first listed = topmost layer.
+
+   --bg-panel: url('texture.png'),           /* top: texture */
+               var(--noise),                  /* middle: grain */
+               linear-gradient(180deg,        /* bottom: gradient */
+                 #38383a 0%, #242426 100%);
+
+   The fallback solid color (for browsers that fail to load URL textures):
+   --bg-panel: url('texture.png'), #242426;
+               ↑ always include a solid color fallback as the last value
+
+   ── DATA URI TOOLS ───────────────────────────────────────────────────────
+
+   If you want to embed an image directly in the CSS (no external dependency):
+   base64.guru/converter/encode/image — converts any image to base64 data URI
+   yoksel.github.io/url-encoder — encodes SVG for use in CSS url()
+   png-pixel.com — generates 1×1 pixel data URIs for solid color backgrounds
+
+   ██████████████████████████████████████████████████████████████████████████
+   11. NICHE-SPECIFIC MATERIAL RESOURCES
+       For the aesthetics this app was built around
+   ██████████████████████████████████████████████████████████████████████████
+
+   This app ships with skeuomorphic, Win95, Win98, WinXP/Luna, Y2K, Frutiger
+   Aero, polycarbonate/industrial, and anodized metal themes. Every section
+   below is a curated toolkit of raw materials — textures, palettes, fonts,
+   pattern URLs, SVG resources — organized by niche. No style direction, just
+   assets an AI can pull from directly when building in that aesthetic.
+
+   ══════════════════════════════════════════════════════════════════════════
+   SKEUOMORPHIC / REALISTIC MATERIALS
+   (Leather, metal, wood, felt, carbon, paper — iOS 6 / OS X era)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs (direct use in CSS background):
+   https://www.transparenttextures.com/patterns/brushed-alum.png
+   https://www.transparenttextures.com/patterns/brushed-alum-dark.png
+   https://www.transparenttextures.com/patterns/carbon-fibre.png
+   https://www.transparenttextures.com/patterns/carbon-fibre-v2.png
+   https://www.transparenttextures.com/patterns/leather.png
+   https://www.transparenttextures.com/patterns/dark-leather.png
+   https://www.transparenttextures.com/patterns/black-leather.png
+   https://www.transparenttextures.com/patterns/felt.png
+   https://www.transparenttextures.com/patterns/dark-felt.png
+   https://www.transparenttextures.com/patterns/wood-pattern.png
+   https://www.transparenttextures.com/patterns/dark-wood.png
+   https://www.transparenttextures.com/patterns/old-paper.png
+   https://www.transparenttextures.com/patterns/paper.png
+   https://www.transparenttextures.com/patterns/clean-gray-paper.png
+   https://www.transparenttextures.com/patterns/corrugated-iron.png
+   https://www.transparenttextures.com/patterns/stainless-steel.png
+   https://www.transparenttextures.com/patterns/checkered-pattern.png
+   https://www.transparenttextures.com/patterns/subtle-dots.png
+   https://www.transparenttextures.com/patterns/perforated-pattern.png
+   https://www.transparenttextures.com/patterns/metal.png
+   https://www.transparenttextures.com/patterns/dark-stripes.png
+   https://www.transparenttextures.com/patterns/diagonal-striped-brick.png
+   https://www.transparenttextures.com/patterns/dust.png
+   https://www.transparenttextures.com/patterns/noise-lines.png
+   https://www.transparenttextures.com/patterns/nistri.png
+
+   FULL SEARCHABLE TEXTURE INDEX:
+   https://www.transparenttextures.com  (500+ textures, preview + direct URL)
+   https://textureking.com              (high-res, many free, download needed)
+   https://www.toptal.com/designers/subtlepatterns (subtle tileable patterns)
+
+   PALETTE TOOLS FOR MATERIAL COLORS:
+   https://www.colorhexa.com           (tints/shades/harmonies from any hex)
+   https://palettte.app                (fine-tune palette relationships)
+   https://coolors.co/palettes/trending (browse trending palettes)
+
+   FONTS:
+   https://fonts.google.com/specimen/Nunito           (rounded, warm)
+   https://fonts.google.com/specimen/Lato             (clean neutral)
+   https://fonts.google.com/specimen/Source+Sans+3    (Adobe neutral)
+   'Lucida Grande', 'Helvetica Neue', 'Gill Sans'     (system, no import needed)
+
+   ══════════════════════════════════════════════════════════════════════════
+   WINDOWS 95 / 98
+   (Silver gray, flat bevel borders, teal desktop, chunky UI)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs:
+   https://www.transparenttextures.com/patterns/45-degree-fabric.png
+   https://www.transparenttextures.com/patterns/asfalt-dark.png
+   https://www.transparenttextures.com/patterns/asfalt-lite.png
+   https://www.transparenttextures.com/patterns/white-diamond.png
+   https://www.transparenttextures.com/patterns/grey-sandbag.png
+
+   ICON / ASSET ARCHIVES (for reference color values):
+   https://win98icons.alex.nid.re           (original Win98 icon set)
+   https://www.guidebookgallery.org/screenshots/winnt40  (authentic screenshots)
+   https://toastytech.com/guis/win95.html   (Win95 GUI deep archive)
+   https://betawiki.net/wiki/Windows_95     (every build, exact UI)
+   https://winworldpc.com/library/themes    (original .theme files with color values)
+   https://www.thurrott.com/windows/windows-10/195498/windows-95-story  (color reference)
+
+   OFFICIAL WIN95 SYSTEM PALETTE (exact registry values):
+   lospec.com/palette-list/windows-default-16    (the 16-color Win95 palette)
+   lospec.com/palette-list/windows-256-colour    (full 256-color Win palette)
+
+   FONTS:
+   'MS Sans Serif', 'Microsoft Sans Serif'  (system, no import)
+   'Tahoma'                                 (Win98+, system, no import)
+   https://fonts.google.com/specimen/VT323  (pixel terminal, close feel)
+   https://fonts.cdnfonts.com/css/ms-sans-serif  (actual MS Sans Serif web font)
+
+   ══════════════════════════════════════════════════════════════════════════
+   WINDOWS XP / LUNA / BLISS
+   (Plastic gradient buttons, Luna Blue/Silver/Olive, soft drop shadows)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs:
+   https://www.transparenttextures.com/patterns/45-degree-fabric.png
+   https://www.transparenttextures.com/patterns/light-mesh.png
+   https://www.transparenttextures.com/patterns/arches.png
+   https://www.transparenttextures.com/patterns/diamond-upholstery.png
+   https://www.transparenttextures.com/patterns/circles.png
+
+   SCREENSHOT / COLOR REFERENCE ARCHIVES:
+   https://www.guidebookgallery.org/screenshots/winxp      (every XP version)
+   https://betawiki.net/wiki/Windows_XP                    (full build history)
+   https://toastytech.com/guis/wxp.html                    (detailed XP archive)
+   https://winclassic.boards.net                           (enthusiast community, hex values)
+   https://msfn.org/board/forum/85-windows-xp             (original theme files discussed)
+   https://archive.org/search?query=windows+xp+theme      (original .msstyles files)
+
+   LUNA COLOR PALETTE REFERENCES:
+   lospec.com/palette-list/luna-blue-palette               (Luna Blue UI colors)
+   https://www.color-hex.com/color-palette/1005            (XP color swatches)
+
+   FONTS:
+   'Tahoma'                                    (exact XP system font, system)
+   'Franklin Gothic Medium'                    (XP dialog headers, system)
+   https://fonts.google.com/specimen/Trebuchet+MS  (XP web font era)
+   https://fonts.google.com/specimen/Verdana       (XP browser default)
+
+   ══════════════════════════════════════════════════════════════════════════
+   Y2K / EARLY 2000s WEB
+   (Chrome gradients, metallic pills, iridescent, aqua/silver, pixel fonts)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs:
+   https://www.transparenttextures.com/patterns/silver-scales.png
+   https://www.transparenttextures.com/patterns/shinedotted.png
+   https://www.transparenttextures.com/patterns/asfalt-lite.png
+   https://www.transparenttextures.com/patterns/inflicted.png
+   https://www.transparenttextures.com/patterns/grid-me.png
+   https://www.transparenttextures.com/patterns/escheresque.png
+   https://www.transparenttextures.com/patterns/circles.png
+   https://www.transparenttextures.com/patterns/star-element.png
+
+   ARCHIVE / REFERENCE:
+   https://archive.org/web/                        (Wayback Machine — browse 2000-2004 sites)
+   https://web.archive.org/web/20020101*/yahoo.com (e.g. Yahoo 2002, exact Y2K aesthetic)
+   https://thehistoryoftheweb.com                  (web design era history)
+   https://www.cameronsworld.net                   (Y2K web collage/reference)
+   https://gifcities.org                           (GeoCities GIF archive — Y2K textures)
+   https://www.deviantart.com/browse?q=y2k+winamp+skin  (Winamp skins, ultra Y2K)
+   https://skins.webamp.org                        (thousands of Y2K Winamp skins)
+
+   PALETTE TOOLS:
+   lospec.com/palette-list/famicube                (retro-adjacent bright palette)
+   https://www.color-hex.com/color-palette/4666    (chrome/metallic Y2K palette)
+   https://coolors.co/palettes/popular/y2k         (browse Y2K palettes)
+
+   SVG CHROME GRADIENT (Y2K metallic button, use in --shadow-btn or bg):
+   background: linear-gradient(180deg,
+     #ffffff 0%, #c8d8e8 20%, #8aaac8 45%,
+     #6888a8 50%, #8aaac8 55%, #c8d8e8 80%, #ffffff 100%);
+
+   FONTS:
+   https://fonts.google.com/specimen/VT323             (pixel/terminal)
+   https://fonts.google.com/specimen/Press+Start+2P    (pixel game font)
+   https://fonts.google.com/specimen/Orbitron          (futuristic Y2K)
+   https://fonts.google.com/specimen/Exo+2             (techy)
+   https://fonts.google.com/specimen/Rajdhani          (condensed tech)
+   https://fonts.cdnfonts.com/css/arial-rounded-mt     (Y2K web staple)
+   'Arial', 'Verdana', 'Impact'                        (authentic Y2K system fonts)
+
+   ══════════════════════════════════════════════════════════════════════════
+   FRUTIGER AERO / VISTA / EARLY METRO
+   (Glass, nature, light, translucency, soft glows, clean gradients)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs (subtle, light-colored):
+   https://www.transparenttextures.com/patterns/always-grey.png
+   https://www.transparenttextures.com/patterns/light-paper-fibers.png
+   https://www.transparenttextures.com/patterns/subtle-white-feathers.png
+   https://www.transparenttextures.com/patterns/white-plaster.png
+   https://www.transparenttextures.com/patterns/exclusive-paper.png
+   https://www.transparenttextures.com/patterns/rice-paper-2.png
+   https://www.transparenttextures.com/patterns/light-noise.png
+   https://www.transparenttextures.com/patterns/inspiration-geometry.png
+
+   SVG PATTERN RESOURCES (light, geometric):
+   https://heropatterns.com            (clean SVG patterns, data URI export)
+   https://www.svgbackgrounds.com      (nature, bubbles, waves — very Frutiger)
+   https://bgjar.com                   (soft blob/gradient backgrounds, SVG)
+   https://haikei.app                  (generate waves, blobs, layered shapes as SVG)
+   https://pattern.monster             (geometric SVG patterns, data URI)
+
+   SCREENSHOT / COLOR REFERENCE:
+   https://www.guidebookgallery.org/screenshots/winvista    (Vista exact UI)
+   https://betawiki.net/wiki/Windows_Vista                  (all Vista builds)
+   https://toastytech.com/guis/vista.html                   (Vista deep archive)
+   https://www.guidebookgallery.org/screenshots/win7        (Win7/Aero reference)
+   https://aesthetics.fandom.com/wiki/Frutiger_Aero         (aesthetic wiki, good palette refs)
+   https://www.pinterest.com/search/pins/?q=frutiger+aero   (massive visual reference)
+   https://knowyourmeme.com/memes/frutiger-aero             (history + visual gallery)
+
+   NATURE / ORGANIC BACKGROUND IMAGES (Frutiger-style bg, use as --bg-body):
+   https://unsplash.com/s/photos/water-drop-blue          (high quality, free use)
+   https://unsplash.com/s/photos/glass-reflection-light
+   https://unsplash.com/s/photos/soap-bubble
+   https://unsplash.com/s/photos/aurora-borealis
+   Note: use the Unsplash direct image URL or convert to data URI
+
+   PALETTE:
+   lospec.com/palette-list/frutiger-aero-palette          (community-built)
+   Typical values: sky blue #a1d4f0, glass white rgba(255,255,255,0.6),
+   fresh green #7ec87e, soft glow rgba(100,200,255,0.3)
+
+   GLASS / BLUR GENERATORS:
+   https://ui.glass/generator          (glassmorphism CSS generator)
+   https://css.glass                   (full glassmorphism panel CSS)
+   https://glassmorphism.com           (another generator with live preview)
+   backdrop-filter reference: https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter
+
+   FONTS:
+   https://fonts.google.com/specimen/Segoe+UI            (Vista system font, Google version)
+   https://fonts.google.com/specimen/Calibri             (Vista default document font)
+   https://fonts.google.com/specimen/Myriad+Pro          (Frutiger-adjacent, Adobe)
+   https://fonts.google.com/specimen/Fira+Sans           (modern Frutiger-inspired)
+   https://fonts.google.com/specimen/Nunito              (soft rounded, very Aero feel)
+   https://fonts.google.com/specimen/Quicksand           (light, bubbly)
+   https://fonts.google.com/specimen/Ubuntu              (clean, period-accurate Linux/web)
+   'Segoe UI', 'Calibri'                                 (system, no import on Windows)
+
+   ══════════════════════════════════════════════════════════════════════════
+   POLYCARBONATE / INDUSTRIAL / MECHANICAL
+   (Clear plastic, CNC aluminum, EDC gear, mechanical keyboards, TE aesthetic)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs:
+   https://www.transparenttextures.com/patterns/brushed-alum.png
+   https://www.transparenttextures.com/patterns/brushed-alum-dark.png
+   https://www.transparenttextures.com/patterns/stainless-steel.png
+   https://www.transparenttextures.com/patterns/corrugated-iron.png
+   https://www.transparenttextures.com/patterns/metal.png
+   https://www.transparenttextures.com/patterns/carbon-fibre.png
+   https://www.transparenttextures.com/patterns/subtle-dots.png
+   https://www.transparenttextures.com/patterns/perforated-pattern.png
+   https://www.transparenttextures.com/patterns/checkered-pattern.png
+   https://www.transparenttextures.com/patterns/sandpaper.png
+   https://www.transparenttextures.com/patterns/noise-pattern-with-subtle-cross-lines.png
+
+   REFERENCE (for color values and material appearance):
+   https://www.teenagers.engineering          (TE product colorways, exact)
+   https://www.amazon.com/s?k=mechanical+keyboard+case  (aluminum case colors)
+   https://drop.com/mechanical-keyboards      (real anodized colors)
+   https://www.pmk.keys.design               (keyboard colorway design tool)
+   https://color.adobe.com/search?q=industrial  (industrial color palettes)
+
+   PALETTE GENERATORS:
+   https://www.colorhexa.com                 (generate tints from any metal hex)
+   https://neumorphism.io                    (soft-extruded shadows for plastic)
+
+   FONT RESOURCES:
+   https://fonts.google.com/specimen/JetBrains+Mono    (technical monospace)
+   https://fonts.google.com/specimen/IBM+Plex+Mono     (IBM industrial feel)
+   https://fonts.google.com/specimen/Space+Grotesk     (geometric, mechanical)
+   https://fonts.google.com/specimen/DM+Mono           (clean mono)
+   https://fonts.google.com/specimen/Share+Tech+Mono   (tech terminal)
+   https://fonts.google.com/specimen/Barlow            (condensed industrial)
+   https://fonts.google.com/specimen/Roboto+Condensed  (industrial sans)
+
+   ══════════════════════════════════════════════════════════════════════════
+   AMOLED / PITCH BLACK / DARK HARDWARE
+   (Studio consoles, rack gear, ALL black, LED accents, subtle grain)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs (extremely subtle on black):
+   https://www.transparenttextures.com/patterns/carbon-fibre.png
+   https://www.transparenttextures.com/patterns/carbon-fibre-v2.png
+   https://www.transparenttextures.com/patterns/noise-lines.png
+   https://www.transparenttextures.com/patterns/asfalt-dark.png
+   https://www.transparenttextures.com/patterns/dark-stripes.png
+   https://www.transparenttextures.com/patterns/black-linen.png
+   https://www.transparenttextures.com/patterns/black-thread.png
+   https://www.transparenttextures.com/patterns/dark-leather.png
+   https://www.transparenttextures.com/patterns/dark-felt.png
+   https://www.transparenttextures.com/patterns/nistri.png
+
+   SVG INLINE NOISE (zero external dependency, best for dark themes):
+   Vary baseFrequency 0.6–1.2 for coarse/fine grain.
+   Vary opacity 0.03–0.12 for subtle/visible.
+   See --noise variable in the existing amoled-skeuo theme for exact syntax.
+
+   LED GLOW ACCENT REFERENCE (real hardware LED colors):
+   Green  LED: #00ff41 / #39ff14 (matrix/classic)
+   Blue   LED: #0096ff / #00b4ff (cold)
+   Amber  LED: #ff9500 / #d4960a (vintage)
+   Red    LED: #ff2200 / #ff0000
+   White  LED: #e8f0ff (cool white) / #fff8e8 (warm white)
+   RGB    LED: any hue at full saturation + slight desaturation for realism
+
+   REFERENCE GALLERIES:
+   https://www.bhphotovideo.com/c/browse/studio-equipment (studio gear visuals)
+   https://www.sweetwater.com/store/detail          (audio hardware reference)
+   https://www.gearslutz.com/board/studio-building  (dark rack setups)
+   lospec.com/palette-list/amoled-grayscale         (AMOLED-tuned grays)
+
+   FONTS:
+   https://fonts.google.com/specimen/JetBrains+Mono
+   https://fonts.google.com/specimen/IBM+Plex+Mono
+   https://fonts.google.com/specimen/Fira+Code
+   https://fonts.google.com/specimen/Source+Code+Pro
+   https://fonts.google.com/specimen/Inconsolata
+   https://fonts.google.com/specimen/Share+Tech+Mono
+   -apple-system, 'SF Pro Display'              (system, no import, clean)
+
+   ══════════════════════════════════════════════════════════════════════════
+   BRONZE / ANODIZED METAL / EDC
+   (Machined titanium, copper, bronze, dark warm metals)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs:
+   https://www.transparenttextures.com/patterns/brushed-alum-dark.png
+   https://www.transparenttextures.com/patterns/metal.png
+   https://www.transparenttextures.com/patterns/corrugated-iron.png
+   https://www.transparenttextures.com/patterns/wood-pattern.png     (warm grain)
+   https://www.transparenttextures.com/patterns/old-leather.png
+
+   REFERENCE (for real anodized / machined color values):
+   https://www.massdrop.com/mechanical-keyboards           (anodized colorways)
+   https://keebtalk.com                                    (keyboard community, tons of anodized refs)
+   https://geekhack.org                                    (group buys, exact anodized colors)
+   https://www.gg-allin.com/en/anodizing                   (anodizing color chart)
+   https://titaniumjewelry.com/pages/anodizing-color-chart (anodized titanium palette)
+
+   SPECIFIC BRONZE/COPPER PALETTE:
+   Bronze dark:   #120f0e → #261e1a → #3d312b
+   Bronze mid:    #59473e → #6b554b → #9c897a
+   Bronze light:  #c4a882 → #e8dacb
+   Copper:        #1a0a00 → #3d1a00 → #7d3800 → #b05a00 → #d4860a
+   Titanium:      #1a1c20 → #2c3038 → #464e5a → #7a8490
+
+   FONTS:
+   https://fonts.google.com/specimen/Cinzel          (Roman engraving feel)
+   https://fonts.google.com/specimen/IM+Fell+English (old metal type)
+   https://fonts.google.com/specimen/Playfair+Display (elegant serif)
+   https://fonts.google.com/specimen/Cormorant+Garamond
+   'SF Pro Display', -apple-system                   (clean contrast to the warmth)
+
+   ══════════════════════════════════════════════════════════════════════════
+   SAKURA / Y2K PINK / SHOUJO / KAWAII
+   (Hot pink, pastel, chrome gradients, very early 2000s Japanese web)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs:
+   https://www.transparenttextures.com/patterns/pink-dust.png
+   https://www.transparenttextures.com/patterns/flowers.png
+   https://www.transparenttextures.com/patterns/debut-light.png
+   https://www.transparenttextures.com/patterns/white-diamond.png
+   https://www.transparenttextures.com/patterns/brilliant.png
+   https://www.transparenttextures.com/patterns/sparkles.png
+   https://www.transparenttextures.com/patterns/hearts-pattern.png
+   https://www.transparenttextures.com/patterns/nistri.png
+
+   GIF / PATTERN ARCHIVES (authentic Y2K pink web textures):
+   https://gifcities.org/?q=pink                    (GeoCities pink GIFs)
+   https://gifcities.org/?q=sparkle                 (sparkle/shimmer GIFs)
+   https://gifcities.org/?q=heart                   (heart dividers etc)
+   https://web.textfiles.com/graphics               (original web graphics archive)
+   https://www.deviantart.com/browse?q=y2k+pink+layout  (layout references)
+   https://glitter-graphics.com                     (glitter textures, export URLs)
+
+   PALETTE:
+   lospec.com/palette-list/2bit-demichrome           (soft pink retro)
+   lospec.com/palette-list/hollow                    (soft pastel including pinks)
+   https://colorhunt.co/palettes/pink                (curated pink UI palettes)
+   https://www.color-hex.com/color-palette/102899    (Y2K pink chrome palette)
+
+   FONTS:
+   https://fonts.google.com/specimen/Pacifico        (bubbly script)
+   https://fonts.google.com/specimen/Comfortaa       (rounded)
+   https://fonts.google.com/specimen/Fredoka+One     (chunky rounded)
+   https://fonts.google.com/specimen/Nunito          (soft)
+   https://fonts.google.com/specimen/Righteous       (Y2K chrome feel)
+   https://fonts.google.com/specimen/Audiowide       (techy + girly)
+   https://fonts.cdnfonts.com/css/arial-rounded-mt   (classic Y2K)
+
+   ══════════════════════════════════════════════════════════════════════════
+   TERMINAL / HACKER / CRT
+   (All black, monospace, phosphor green/amber, scanlines, noise)
+   ══════════════════════════════════════════════════════════════════════════
+
+   TILEABLE TEXTURE URLs:
+   https://www.transparenttextures.com/patterns/dark-mosaic.png
+   https://www.transparenttextures.com/patterns/noise-lines.png
+   https://www.transparenttextures.com/patterns/asfalt-dark.png
+   https://www.transparenttextures.com/patterns/black-linen.png
+
+   SCANLINE / CRT EFFECT (pure CSS, no texture needed):
+   background: repeating-linear-gradient(
+     0deg,
+     rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px,
+     transparent 1px, transparent 2px
+   );
+   Layer this over your bg-body or bg-panel for CRT scanlines.
+
+   CRT GLOW (use in --shadow-panel or Part B):
+   box-shadow: 0 0 20px rgba(0,255,65,0.2), inset 0 0 60px rgba(0,0,0,0.5);
+
+   PHOSPHOR PALETTE (real CRT phosphor colors):
+   P1 Green:    #00ff41  /  #33ff57  (classic green terminal)
+   P3 Amber:    #ffb000  /  #ff9500  (amber terminal)
+   P4 White:    #e8f0ff             (cold white phosphor)
+   P31 Green:   #39ff14             (bright matrix green)
+   Dim version: reduce opacity to 0.7 for "unlit" characters
+
+   REFERENCE:
+   https://lospec.com/palette-list/cga          (original CGA 16 colors)
+   https://lospec.com/palette-list/monochrome   (1-bit black/white)
+   https://lospec.com/palette-list/terminal     (terminal green palette)
+   https://int10h.org/oldschool-pc-fonts        (authentic DOS/terminal fonts as web fonts)
+   https://www.dafont.com/bitmap.php            (bitmap/terminal font collection)
+
+   FONTS:
+   https://int10h.org/oldschool-pc-fonts/fontlist (direct web font downloads — authentic DOS)
+   https://fonts.google.com/specimen/VT323
+   https://fonts.google.com/specimen/Share+Tech+Mono
+   https://fonts.google.com/specimen/Fira+Code
+   https://fonts.google.com/specimen/JetBrains+Mono
+   https://fonts.google.com/specimen/Courier+Prime
+   https://fonts.google.com/specimen/IBM+Plex+Mono
+   https://fonts.google.com/specimen/Inconsolata
+
+   ══════════════════════════════════════════════════════════════════════════
+   AURORA / GLASSMORPHISM / TRANSLUCENT
+   ══════════════════════════════════════════════════════════════════════════
+
+   GRADIENT BACKGROUND GENERATORS (for --bg-body):
+   https://meshgradient.io              (mesh gradients, export CSS/image)
+   https://haikei.app                   (waves, blobs, gradients, SVG export)
+   https://bgjar.com                    (abstract gradient blobs, SVG)
+   https://gradienta.io                 (multi-color mesh gradients, CSS)
+   https://www.gradientmagic.com        (unusual gradient patterns)
+   https://hypercolor.dev               (copy-paste CSS gradients)
+
+   GLASS PANEL GENERATORS:
+   https://ui.glass/generator
+   https://css.glass
+   https://glassmorphism.com
+   https://fffuel.co/gggyrate          (animated SVG backgrounds)
+
+   SVG ORGANIC SHAPE GENERATORS (aurora/nature backgrounds):
+   https://www.svgbackgrounds.com       (filter by "minimal" and "abstract")
+   https://www.shapedivider.app         (wavy dividers)
+   https://blobmaker.app                (organic blob shapes as SVG)
+   https://squircley.app                (squircle shapes)
+
+   AURORA REFERENCE PHOTOS (for color picking):
+   https://unsplash.com/s/photos/aurora-borealis
+   https://unsplash.com/s/photos/northern-lights
+   https://unsplash.com/s/photos/iridescent
+
+   FONTS:
+   https://fonts.google.com/specimen/Inter
+   https://fonts.google.com/specimen/DM+Sans
+   https://fonts.google.com/specimen/Plus+Jakarta+Sans
+   https://fonts.google.com/specimen/Outfit
+
+   ══════════════════════════════════════════════════════════════════════════
+   UNIVERSAL TOOLS (useful for any niche)
+   ══════════════════════════════════════════════════════════════════════════
+
+   PICK COLORS FROM ANY IMAGE OR WEBSITE:
+   https://imagecolorpicker.com         (upload image → get hex palette)
+   https://colorize.design              (photo → palette)
+   https://palettegenerator.com         (auto-palette from image URL)
+   https://www.colorzilla.com/chrome    (eyedropper browser extension)
+
+   PALETTE BROWSERS (huge curated collections):
+   https://lospec.com/palette-list      (thousands of palettes, filterable by style)
+   https://colorhunt.co                 (trending UI palettes)
+   https://coolors.co/palettes          (huge browseable collection)
+   https://www.schemecolor.com          (themed palettes e.g. "Windows 95")
+   https://flatuicolors.com             (flat UI color sets)
+   https://materialuicolors.co          (Material Design palette)
+
+   CONVERT ANYTHING TO CSS DATA URI:
+   https://base64.guru/converter/encode/image   (image → base64)
+   https://yoksel.github.io/url-encoder         (SVG → CSS url() safe string)
+   https://png-pixel.com                        (1×1 solid color pixel)
+   https://www.svgviewer.dev                    (edit + encode SVG)
+
+   SHADOW GENERATORS:
+   https://neumorphism.io               (soft-UI extruded shadows)
+   https://box-shadow.dev               (visual builder, copy CSS)
+   https://shadows.brumm.af             (multi-layer smooth shadows)
+   https://cssgenerator.pl/box-shadow-css-generator.html
+
+   BORDER / OUTLINE GENERATORS:
+   https://kovart.github.io/dashed-border-generator   (SVG dashed borders)
+   https://css-generators.com/custom-borders           (unusual border shapes)
+   https://css-generators.com/wavy-shapes              (wavy CSS shapes)
+
+   FULL CSS EFFECT GENERATORS:
+   https://fffuel.co                    (collection of SVG + CSS generators)
+   https://cssfx.netlify.app            (animations and effects)
+   https://uiverse.io/buttons           (community button CSS — huge library)
+   https://uiverse.io/cards             (community card CSS)
+   https://uiverse.io/checkboxes        (community input CSS)
+   https://animista.net                 (animation generator, copy keyframes)
+
+   ██████████████████████████████████████████████████████████████████████████
+   END OF DOCUMENTATION — themes begin below
+   ██████████████████████████████████████████████████████████████████████████ */
