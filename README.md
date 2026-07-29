@@ -265,8 +265,8 @@ Five cursor packs selectable in the sidebar: **Baldur's Gate 3**, **Diablo II**,
 ## 🚀 Getting Started
 
 ```bash
-git clone https://github.com/miyakejima/cathedral-chat.git
-cd cathedral-chat
+git clone https://github.com/miyakejima/cathedral.git
+cd cathedral
 npm install
 npm start
 ```
